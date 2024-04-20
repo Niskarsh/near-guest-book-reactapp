@@ -108,7 +108,7 @@ impl MessageList {
     }
 
     pub fn messages_by_signed_in_user(&self) -> Vec<Rc<Message>> {
-        (*self.message_list_by_id.get(&env::signer_account_id()).unwrap_or(&vec![]).clone()).to_vec()
+        (*self.message_list_by_id.get(&(env::signer_account_id())).unwrap_or(&vec![]).clone()).to_vec()
     }
  }
 
