@@ -7,16 +7,18 @@ window.Buffer = window.Buffer || require("buffer").Buffer;
 
 class App extends Component {
   state = {
-    counter: 0,
-    CONTRACT_ADDRESS: 'counter2.niskarsh31.testnet',
+    counter: [],
+    yourMessages: [],
+    CONTRACT_ADDRESS: 'guest-book1.niskarsh31.testnet',
     NETWORK: 'testnet',
     wallet: {},
     walletSignedIn: false,
     caller: 'Sign in to access counT',
-    increment: 'Increase',
+    increment: 'Add Message',
     decrement: 'Decrease',
     reset: 'Reset',
-    step: 1,
+    step: 0,
+    message: ""
   };
 
   toggleWalletModalVisbibility = () => {
@@ -48,50 +50,36 @@ class App extends Component {
         wallet.signOut();
       }
     }
-        
+
     this.setState({ wallet: {} });
   }
 
-  increase = async () => {
-    const { wallet, CONTRACT_ADDRESS, step } = this.state;
+  addMessage = async () => {
+    const { wallet, CONTRACT_ADDRESS, step, message } = this.state;
     this.setState({ increment: 'Pending' })
-    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'increment', args: { step } });
+    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'add_message', args: { message }, deposit: parseInt(step, 10) });
     let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    this.setState({ counter: newValue, increment: 'Increase' });
+    this.setState({ counter: newValue, increment: 'Add Message' });
   }
 
-  decrease = async () => {
-    const { wallet, CONTRACT_ADDRESS, step } = this.state;
-    this.setState({ decrement: 'Pending' })
-    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'decrement', args: { step } });
-    let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    this.setState({ counter: newValue, decrement: 'Decrease' });
-  }
 
-  reset = async  () => {
-    const { wallet, CONTRACT_ADDRESS } = this.state;
-    this.setState({ reset: 'Pending' })
-    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'reset' });
-    let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    this.setState({ counter: newValue, reset: 'Reset' });
-  }
 
   currentValue = async ({ wallet, CONTRACT_ADDRESS }) => wallet.viewMethod({
-    contractId: CONTRACT_ADDRESS, method: 'get_num',
+    contractId: CONTRACT_ADDRESS, method: 'get_messages',
+    args: {
+      offset: '0',
+      limit: '10'
+    }
   });
 
   handleChange = (event) => {
     let value = event.target.value
-    try {
-      value = parseInt(value, 10);
-      this.setState({ step: value });
-    } catch(err) {
-      this.setState({ step: 1 });
-    }
+    this.setState({ [event.target.name]: event.target.value });
   };
 
   async componentDidMount() {
     let { wallet, CONTRACT_ADDRESS, NETWORK } = this.state;
+    let yourMessages = [];
     if (!(Object.keys(wallet).length)) {
       wallet = new Wallet({
         createAccessKeyFor: CONTRACT_ADDRESS,
@@ -99,32 +87,72 @@ class App extends Component {
       });
     }
     let isSignedIn = await wallet.startUp();
-    let ab = await wallet.viewMethod({
-      contractId: CONTRACT_ADDRESS, method: 'get_num',
-    })
-    let counter = await this.currentValue({ wallet, CONTRACT_ADDRESS }); 
-    this.setState({ wallet, walletSignedIn: Boolean(isSignedIn), counter,
-      caller: isSignedIn ? `Welcome: ${wallet.accountId}`: 'Sign in to access counT'
+    // let ab = await wallet.viewMethod({
+    //   contractId: CONTRACT_ADDRESS, method: 'get_num',
+    // })
+    let counter = await this.currentValue({ wallet, CONTRACT_ADDRESS });
+    console.log(counter)
+    
+    if (isSignedIn) {
+      yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
+      console.log(`!!!!!!!!!!!!!!!`, yourMessages)
+    }
+    this.setState({
+      wallet, walletSignedIn: Boolean(isSignedIn), counter, yourMessages,
+      caller: isSignedIn ? `Welcome: ${wallet.accountId}` : 'Sign in to access counT'
     });
   }
 
   render() {
-    let { counter, walletSignedIn, caller, increment, decrement, reset, step } = this.state;
+    let { counter, yourMessages, message, walletSignedIn, caller, increment, decrement, reset, step } = this.state;
     return (
-      <div className="App">
-        <h1>This counter lives in the NEAR blockchain! [TESTNET]</h1>
-        <p>Share with your friends, or just watch the counter go</p>
-        <p>To participate, login</p>
-        <p>Once done, reset the counter. OR leave it for some other time</p>
-        <h2>{ caller }</h2>
-        
-        <button onClick={this.walletSignIn} hidden={walletSignedIn} >Connect wallet</button>
-        <button onClick={this.walletSignOut} hidden={!walletSignedIn}>Disconnect wallet</button>
-        <h2>Counter: {counter}</h2>
-        <input aria-label='change' placeholder='Step value' type='text' value={step} onChange={this.handleChange}/>
-        <button onClick={this.increase} disabled={!walletSignedIn} l> {increment} </button>
-        <button onClick={this.decrease} disabled={!walletSignedIn}> {decrement} </button>
-        <button onClick={this.reset} disabled={!walletSignedIn}> {reset} </button>
+      <div >
+        <div className="App">
+          <h1>This counter lives in the NEAR blockchain! [TESTNET]</h1>
+          <p>Share with your friends, or just watch the counter go</p>
+          <p>To participate, login</p>
+          <p>Once done, reset the counter. OR leave it for some other time</p>
+          <h2>{caller}</h2>
+
+          <button onClick={this.walletSignIn} hidden={walletSignedIn} >Connect wallet</button>
+          <button onClick={this.walletSignOut} hidden={!walletSignedIn}>Disconnect wallet</button>
+          <br />
+          <br />
+          <input name='message' placeholder='Message' type='textarea' value={message} onChange={this.handleChange} />
+          <input name='step' aria-label='change' placeholder='Step value' type='text' value={step} onChange={this.handleChange} />
+          <button onClick={this.addMessage} disabled={!walletSignedIn} l> {increment} </button>
+          <button onClick={this.decrease} disabled={!walletSignedIn}> {decrement} </button>
+          <button onClick={this.reset} disabled={!walletSignedIn}> {reset} </button>
+        </div>
+        <div class='superContainer'>
+          <div class='container'>
+            <div class='subContainer'>
+              <h2 >All messages </h2>
+              {
+                counter.map((entry, index) => {
+                  return <div key={`a_${index}`} class="card">
+                    <div style={{ margin: "5px" }}>id: {entry.id}</div>
+                    <div style={{ margin: "5px" }}>Premium: {entry.premium_attached || 0} N</div>
+                    <div style={{ margin: "5px" }}>Message: {entry.message}</div>
+                  </div>
+                })
+              }
+            </div>
+
+            <div class='subContainer'>
+              <h2 >Your messages </h2>
+              {
+                yourMessages.map((entry, index) => {
+                  return <div key={`b_${index}`} class="card">
+                    <div style={{ margin: "5px" }}>id: {entry.id}</div>
+                    <div style={{ margin: "5px" }}>Premium: {entry.premium_attached || 0} N</div>
+                    <div style={{ margin: "5px" }}>Message: {entry.message}</div>
+                  </div>
+                })
+              }
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

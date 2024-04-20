@@ -1,5 +1,10 @@
 .App {
   text-align: center;
+  /* display: grid; */
+  /* display: flex;
+  flex-wrap: wrap;
+  justify-content: center; */
+
 }
 
 .App-logo {
@@ -35,4 +40,28 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.superContainer {
+  display: grid;
+}
+.card {
+  border-left: 2px solid black;
+  padding: 10px;
+  background-color: #7fffd450;
+  opacity: 20;
+}
+
+.subContainer {
+  width: 50%;
+  margin: 10px;
+} 
+
+.container {
+  display: flex;
+  justify-content: space-evenly;
+  justify-self: center;
+  align-items: center;
+  text-align: left;
+  width: 70%;
 }
