@@ -1,11 +1,9 @@
-use std::{rc::Rc};
-use near_sdk::{ borsh::{BorshDeserialize, BorshSerialize}, env, log, near_bindgen, AccountId, NearToken, PanicOnDefault, json_types::U128, store::{Vector, LookupMap} };
-// use schemars::JsonSchema;
-use serde::Serialize;
-// use schemars::JsonSchema;
+use std::rc::Rc;
+use near_sdk::{env, near, log, AccountId, NearToken, PanicOnDefault, json_types::U128, store::{Vector, LookupMap} };
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize)]
-#[borsh(crate = "near_sdk::borsh")]
+#[near(serializers = [borsh, json])]
+#[derive(Debug, Clone)]
+// #[borsh(crate = "near_sdk::borsh")]
 pub struct Message {
     id: AccountId,
     premium_attached: Option<NearToken>,
@@ -22,9 +20,9 @@ impl Message {
         }
     }
 }
-#[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-#[borsh(crate = "near_sdk::borsh")]
+#[near(contract_state)]
+#[derive(Debug, PanicOnDefault)]
+// #[borsh(crate = "near_sdk::borsh")]
 pub struct MessageList {
     message_list_by_id: LookupMap<AccountId, Vector<Rc<Message>>>,
     all_messages: Vector<Rc<Message>>,
@@ -32,7 +30,7 @@ pub struct MessageList {
     highest_donation: Option<NearToken>,
 }
 
-#[near_bindgen]
+#[near]
 impl MessageList {
 
     #[init]
@@ -115,7 +113,7 @@ impl MessageList {
     }
 
     pub fn messages_by_signed_in_user(&self) -> Vec<Rc<Message>> {
-        (*self.message_list_by_id.get(&(env::signer_account_id())).unwrap_or(&Vector::new(b"a")).clone()).iter().cloned().collect::<Vec<_>>()
+        (*self.message_list_by_id.get(&(env::signer_account_id())).unwrap_or(&Vector::new(b"a"))).iter().cloned().collect::<Vec<_>>()
     }
  }
 
