@@ -33,7 +33,7 @@ async fn returns_all_messages() -> Result<(), Box<dyn Error>> {
 
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": 0, "limit": 10 }))
+        .args_json(json!({ "offset": "0", "limit": "10" }))
         .await?
         .json()?;
     let dummy = vec![json!({ "id": "123"})];
@@ -52,7 +52,7 @@ async fn returns_all_messages() -> Result<(), Box<dyn Error>> {
     // Check if messages are lost once retrieved
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": 0, "limit": 10 }))
+        .args_json(json!({ "offset": "0", "limit": "10" }))
         .await?
         .json()?;
     let dummy = vec![json!({ "id": "123"})];
@@ -95,7 +95,7 @@ async fn verify_highest_donation() -> Result<(), Box<dyn Error>> {
 
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": 0, "limit": 10 }))
+        .args_json(json!({ "offset": "0", "limit": "10" }))
         .await?
         .json()?;
 
@@ -113,7 +113,7 @@ async fn verify_highest_donation() -> Result<(), Box<dyn Error>> {
 
     let premium_messages = contract
         .view("get_premium_messages")
-        .args_json(json!({ "offset": 0, "limit": 10 }))
+        .args_json(json!({ "offset": "0", "limit": "10" }))
         .await?
         // .json()?;
         .json::<Vec<Map<String, Value>>>()?;

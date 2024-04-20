@@ -1,7 +1,8 @@
-use std::{collections::HashMap, rc::Rc};
-
-use near_sdk::{ borsh::{BorshDeserialize, BorshSerialize}, env, log, near_bindgen, AccountId, NearToken, PanicOnDefault };
+use std::{rc::Rc};
+use near_sdk::{ borsh::{BorshDeserialize, BorshSerialize}, env, log, near_bindgen, AccountId, NearToken, PanicOnDefault, json_types::U128, store::{Vector, LookupMap} };
+// use schemars::JsonSchema;
 use serde::Serialize;
+// use schemars::JsonSchema;
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -22,12 +23,12 @@ impl Message {
     }
 }
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Clone)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct MessageList {
-    message_list_by_id: HashMap<AccountId, Vec<Rc<Message>>>,
-    all_messages: Vec<Rc<Message>>,
-    premium_messages: Vec<Rc<Message>>,
+    message_list_by_id: LookupMap<AccountId, Vector<Rc<Message>>>,
+    all_messages: Vector<Rc<Message>>,
+    premium_messages: Vector<Rc<Message>>,
     highest_donation: Option<NearToken>,
 }
 
@@ -38,9 +39,9 @@ impl MessageList {
     #[private]
     pub fn init() -> Self {
         Self {
-            message_list_by_id: HashMap::new(),
-            all_messages: vec![],
-            premium_messages: vec![],
+            message_list_by_id: LookupMap::new(b"a"),
+            all_messages: Vector::new(b"a"),
+            premium_messages: Vector::new(b"a"),
             highest_donation: None,
         }
     }
@@ -78,29 +79,35 @@ impl MessageList {
             log!("Added to premium messages");
         }
 
+        let mut default_entry = Vector::new(b"a");
+        default_entry.push(Rc::clone(&message));
         // Update message_list_by_id
-        self.message_list_by_id.entry(env::signer_account_id()).and_modify(|list| list.push(Rc::clone(&message))).or_insert(vec![Rc::clone(&message)]);
+        self.message_list_by_id.entry(env::signer_account_id()).and_modify(|list| list.push(Rc::clone(&message))).or_insert(default_entry);
         log!("Updated hashmap entry");
     }
 
-    pub fn get_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
-        let len = self.all_messages.len();
+    pub fn get_messages(&self, offset: Option<U128>, limit: Option<U128>) -> Vec<Rc<Message>> {
+        let offset = u128::from(offset.unwrap_or(U128(0))) as usize;
+        let limit = u128::from(limit.unwrap_or(U128(0))) as usize;
+        let len = self.all_messages.len() as usize;
         let upperlimit = if len < (offset*limit+limit) {
             0
         } else {
             len-offset*limit-limit
         };
-        self.all_messages.clone()[upperlimit..].to_vec()
+        self.all_messages.iter().cloned().collect::<Vec<_>>()[upperlimit..].to_vec()
     }
 
-    pub fn get_premium_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
-        let len = self.premium_messages.len();
+    pub fn get_premium_messages(&self, offset: Option<U128>, limit: Option<U128>) -> Vec<Rc<Message>> {
+        let offset = u128::from(offset.unwrap_or(U128(0))) as usize;
+        let limit = u128::from(limit.unwrap_or(U128(0))) as usize;
+        let len = self.premium_messages.len() as usize;
         let upperlimit = if len < (offset*limit+limit) {
             0
         } else {
             len-offset*limit-limit
         };
-        self.premium_messages.clone()[upperlimit..].to_vec()
+        self.premium_messages.iter().cloned().collect::<Vec<_>>()[upperlimit..].to_vec()
     }
 
     pub fn highest_donation(&self) -> NearToken {
@@ -108,7 +115,7 @@ impl MessageList {
     }
 
     pub fn messages_by_signed_in_user(&self) -> Vec<Rc<Message>> {
-        (*self.message_list_by_id.get(&(env::signer_account_id())).unwrap_or(&vec![]).clone()).to_vec()
+        (*self.message_list_by_id.get(&(env::signer_account_id())).unwrap_or(&Vector::new(b"a")).clone()).iter().cloned().collect::<Vec<_>>()
     }
  }
 
