@@ -3,7 +3,7 @@ use std::{collections::HashMap, rc::Rc};
 use near_sdk::{ borsh::{BorshDeserialize, BorshSerialize}, env, log, near_bindgen, AccountId, NearToken, PanicOnDefault };
 use serde::Serialize;
 
-#[derive(Clone, BorshDeserialize, BorshSerialize, Serialize)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Message {
     id: AccountId,
@@ -85,12 +85,22 @@ impl MessageList {
 
     pub fn get_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
         let len = self.all_messages.len();
-        self.all_messages.clone()[len-offset*limit-limit..].to_vec()
+        let upperlimit = if len < (offset*limit+limit) {
+            0
+        } else {
+            len-offset*limit-limit
+        };
+        self.all_messages.clone()[upperlimit..].to_vec()
     }
 
     pub fn get_premium_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
-        let len = self.all_messages.len();
-        self.premium_messages.clone()[len-offset*limit-limit..].to_vec()
+        let len = self.premium_messages.len();
+        let upperlimit = if len < (offset*limit+limit) {
+            0
+        } else {
+            len-offset*limit-limit
+        };
+        self.premium_messages.clone()[upperlimit..].to_vec()
     }
 
     pub fn highest_donation(&self) -> NearToken {
