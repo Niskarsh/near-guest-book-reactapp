@@ -1,15 +1,18 @@
 use std::{collections::HashMap, rc::Rc};
 
-use near_sdk::{ env, log, near_bindgen, AccountId, NearToken };
+use near_sdk::{ borsh::{BorshDeserialize, BorshSerialize}, env, log, near_bindgen, AccountId, NearToken, PanicOnDefault };
+use serde::Serialize;
 
-struct Message {
+#[derive(Clone, BorshDeserialize, BorshSerialize, Serialize)]
+#[borsh(crate = "near_sdk::borsh")]
+pub struct Message {
     id: AccountId,
     premium_attached: Option<NearToken>,
     message: String,
 }
 
 impl Message {
-    fn new(id: AccountId, premium: Option<NearToken>, message: &str) -> Self {
+    pub fn new(id: AccountId, premium: Option<NearToken>, message: &str) -> Self {
         log!("Creating new Message");
         Self {
             id,
@@ -19,7 +22,8 @@ impl Message {
     }
 }
 #[near_bindgen]
-#[derive(Default)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Clone)]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct MessageList {
     message_list_by_id: HashMap<AccountId, Vec<Rc<Message>>>,
     all_messages: Vec<Rc<Message>>,
@@ -42,14 +46,14 @@ impl MessageList {
     }
 
     #[payable]
-    pub fn add_message(&mut self, message: &str) {
+    pub fn add_message(&mut self, message: String) {
         let premium = if env::attached_deposit().is_zero() {
             None
         } else {
             Some(env::attached_deposit())
         };
         log!("Donation: {}", env::attached_deposit());
-        let message = Rc::new(Message::new(env::signer_account_id(), premium, message));
+        let message = Rc::new(Message::new(env::signer_account_id(), premium, &message));
         self.all_messages.push(Rc::clone(&message)); // Add owned copy of message to all messages
         log!("Added to all messages");
         // Update highest donation if such is the case
@@ -78,7 +82,25 @@ impl MessageList {
         self.message_list_by_id.entry(env::signer_account_id()).and_modify(|list| list.push(Rc::clone(&message))).or_insert(vec![Rc::clone(&message)]);
         log!("Updated hashmap entry");
     }
-}
+
+    pub fn get_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
+        let len = self.all_messages.len();
+        self.all_messages.clone()[len-offset*limit-limit..].to_vec()
+    }
+
+    pub fn get_premium_messages(&self, offset: usize, limit: usize) -> Vec<Rc<Message>> {
+        let len = self.all_messages.len();
+        self.premium_messages.clone()[len-offset*limit-limit..].to_vec()
+    }
+
+    pub fn highest_donation(&self) -> NearToken {
+        self.highest_donation.unwrap_or(NearToken::default())
+    }
+
+    pub fn messages_by_signed_in_user(&self) -> Vec<Rc<Message>> {
+        (*self.message_list_by_id.get(&env::signer_account_id()).unwrap_or(&vec![]).clone()).to_vec()
+    }
+ }
 
 
 
