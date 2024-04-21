@@ -1,5 +1,6 @@
-use near_sdk::NearToken;
-use std::error::Error;
+use backend_rs::Message;
+use near_sdk::{near, AccountId, NearToken};
+use std::{error::Error, rc::Rc};
 // macro allowing us to convert args into JSON bytes to be read by the contract.
 use serde_json::{json, Map, Value};
 
@@ -14,7 +15,7 @@ async fn prepare_dev_env(
         .args_json(json!({}))
         .transact()
         .await?;
-    
+
     let account = worker.dev_create_account().await?;
     let account1 = worker.dev_create_account().await?;
     let account2 = worker.dev_create_account().await?;
@@ -129,14 +130,13 @@ async fn verify_highest_donation() -> Result<(), Box<dyn Error>> {
 async fn reinitiate_contract_with_non_admin_id() -> () {
     let (account, contract) = prepare_dev_env().await.unwrap();
     let _ = account[0]
-    .call(contract.id(), "init")
-    .args_json(json!({}))
-    .transact()
-    .await
-    .unwrap()
-    .unwrap();
+        .call(contract.id(), "init")
+        .args_json(json!({}))
+        .transact()
+        .await
+        .unwrap()
+        .unwrap();
 }
-
 
 #[tokio::test]
 async fn get_account_wise_msg() -> Result<(), Box<dyn Error>> {
@@ -182,10 +182,16 @@ async fn get_account_wise_msg() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
-
 #[tokio::test]
 async fn cmp_msg() -> Result<(), Box<dyn Error>> {
+    #[near(serializers = [borsh, json])]
+    #[derive(Debug, Clone, PartialEq)]
+    // #[borsh(crate = "near_sdk::borsh")]
+    pub struct Message {
+        id: AccountId,
+        premium_attached: Option<NearToken>,
+        message: String,
+    }
     let (account, contract) = prepare_dev_env().await?;
     let _ = account[0]
         .call(contract.id(), "add_message")
@@ -197,9 +203,16 @@ async fn cmp_msg() -> Result<(), Box<dyn Error>> {
         .args_json(json!({}))
         // .transact()
         .await?
-        .json::<Vec<Map<String, Value>>>()?;
+        .json::<Vec<Message>>()?;
 
-    println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
+    assert_eq!(
+        recieved_messages,
+        vec![Message {
+            id: account[0].id().clone(),
+            message: "Hi there ".to_string(),
+            premium_attached: None,
+        }]
+    );
 
     let _ = account[1]
         .call(contract.id(), "add_message")
@@ -208,13 +221,27 @@ async fn cmp_msg() -> Result<(), Box<dyn Error>> {
         .transact()
         .await?;
     let recieved_messages = account[2]
-    .view(contract.id(), "get_messages")
-    .args_json(json!({}))
-    // .transact()
-    .await?
-    .json::<Vec<Map<String, Value>>>()?;
+        .view(contract.id(), "get_messages")
+        .args_json(json!({}))
+        // .transact()
+        .await?
+        .json::<Vec<Message>>()?;
 
-println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
+    assert_eq!(
+        recieved_messages,
+        vec![
+            Message {
+                id: account[0].id().clone(),
+                message: "Hi there ".to_string(),
+                premium_attached: None,
+            },
+            Message {
+                id: account[1].id().clone(),
+                message: "Hi there. I am rich ".to_string(),
+                premium_attached: Some(NearToken::from_near(20)),
+            }
+        ]
+    );
     let _ = account[2]
         .call(contract.id(), "add_message")
         .args_json(json!({ "message": "Hi there. I am richer "}))
@@ -222,16 +249,32 @@ println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
         .transact()
         .await?;
     let recieved_messages = account[2]
-    .view(contract.id(), "get_messages")
-    .args_json(json!({}))
-    // .transact()
-    .await?
-    .json::<Vec<Map<String, Value>>>()?;
+        .view(contract.id(), "get_messages")
+        .args_json(json!({}))
+        // .transact()
+        .await?
+        .json::<Vec<Message>>()?;
 
-println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
- 
+    assert_eq!(
+        recieved_messages,
+        vec![
+            Message {
+                id: account[0].id().clone(),
+                message: "Hi there ".to_string(),
+                premium_attached: None,
+            },
+            Message {
+                id: account[1].id().clone(),
+                message: "Hi there. I am rich ".to_string(),
+                premium_attached: Some(NearToken::from_near(20)),
+            },
+            Message {
+                id: account[2].id().clone(),
+                message: "Hi there. I am richer ".to_string(),
+                premium_attached: Some(NearToken::from_near(50)),
+            }
+        ]
+    );
 
     Ok(())
 }
-
-
