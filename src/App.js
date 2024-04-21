@@ -9,8 +9,8 @@ window.Buffer = window.Buffer || require("buffer").Buffer;
 class App extends Component {
   state = {
     counter: [],
-    yourMessages: [],
-    CONTRACT_ADDRESS: 'guest-book1.niskarsh31.testnet',
+    yourMessages: [{ id: null, premium_attached: null, message: null}],
+    CONTRACT_ADDRESS: 'guest-book2.niskarsh31.testnet',
     NETWORK: 'testnet',
     wallet: {},
     walletSignedIn: false,
@@ -62,7 +62,9 @@ class App extends Component {
     let deposit = utils.format.parseNearAmount(step.toString())
     await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'add_message', args: { message }, deposit });
     let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    this.setState({ counter: newValue, increment: 'Add Message' });
+    let yourMessages = await this.getYourMessages({ wallet, CONTRACT_ADDRESS });
+    console.log(`$$$$$$$$$$$$$$$$$`, yourMessages)
+    this.setState({ counter: newValue, increment: 'Add Message', yourMessages });
   }
 
 
@@ -75,14 +77,27 @@ class App extends Component {
     }
   });
 
+  getYourMessages = async ({ wallet, CONTRACT_ADDRESS }) => {
+    let yourMessages = [];
+    yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
+      yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
+    return yourMessages;
+    // wallet.viewMethod({
+    // contractId: CONTRACT_ADDRESS, method: 'get_messages',
+    // args: {
+    //   offset: 0,
+    //   limit: 10,
+    // }
+  };
+
   handleChange = (event) => {
     let value = event.target.value
     this.setState({ [event.target.name]: event.target.value });
   };
 
   async componentDidMount() {
-    let { wallet, CONTRACT_ADDRESS, NETWORK } = this.state;
-    let yourMessages = [];
+    let { wallet, CONTRACT_ADDRESS, NETWORK, yourMessages } = this.state;
+    // let yourMessages = [];
     if (!(Object.keys(wallet).length)) {
       wallet = new Wallet({
         createAccessKeyFor: CONTRACT_ADDRESS,
@@ -90,25 +105,25 @@ class App extends Component {
       });
     }
     let isSignedIn = await wallet.startUp();
-    // let ab = await wallet.viewMethod({
-    //   contractId: CONTRACT_ADDRESS, method: 'get_num',
-    // })
+    // // let ab = await wallet.viewMethod({
+    // //   contractId: CONTRACT_ADDRESS, method: 'get_num',
+    // // })
     let counter = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    console.log(counter)
+    // console.log(counter)
     
-    if (isSignedIn) {
-      yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
-      yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
-      // console.log(`!!!!!!!!!!!!!!!`, sm)
-    }
+    // if (isSignedIn && (yourMessages.length === 1) && (!(yourMessages[0].id))) {
+    //   yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
+    //   // yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
+    //   console.log(`!!!!!!!!!!!!!!!`)
+    // }
     this.setState({
-      wallet, walletSignedIn: Boolean(isSignedIn), counter, yourMessages,
+      wallet, walletSignedIn: Boolean(isSignedIn), counter,
       caller: isSignedIn ? `Welcome: ${wallet.accountId}` : 'Sign in to access counT'
     });
   }
 
   render() {
-    let { counter, yourMessages, message, walletSignedIn, caller, increment, decrement, reset, step } = this.state;
+    let { counter, yourMessages, message, walletSignedIn, caller, increment, step } = this.state;
     return (
       <div >
         <div className="App">
