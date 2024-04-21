@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/near-guest-book/static/css/main.87fd409c.css",
+    "main.js": "/near-guest-book/static/js/main.26feb162.js",
+    "static/js/453.c1f59d47.chunk.js": "/near-guest-book/static/js/453.c1f59d47.chunk.js",
+    "index.html": "/near-guest-book/index.html",
+    "main.87fd409c.css.map": "/near-guest-book/static/css/main.87fd409c.css.map",
+    "main.26feb162.js.map": "/near-guest-book/static/js/main.26feb162.js.map",
+    "453.c1f59d47.chunk.js.map": "/near-guest-book/static/js/453.c1f59d47.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.87fd409c.css",
+    "static/js/main.26feb162.js"
+  ]
+}
