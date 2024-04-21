@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use near_sdk::{env, near, log, AccountId, NearToken, PanicOnDefault, json_types::U128, store::{Vector, LookupMap} };
+use near_sdk::{env, log, near, store::{LookupMap, Vector}, AccountId, NearToken, PanicOnDefault, Promise };
 
 #[near(serializers = [borsh, json])]
 #[derive(Debug, Clone)]
@@ -72,7 +72,8 @@ impl MessageList {
             }
         };
         // Add to premium messages if such is the case
-        if !(env::attached_deposit().is_zero()) {
+        if !(env::attached_deposit().is_zero()) {            
+            Promise::new(env::current_account_id().clone()).transfer(env::attached_deposit());
             self.premium_messages.push(Rc::clone(&message));
             log!("Added to premium messages");
         }
@@ -84,9 +85,9 @@ impl MessageList {
         log!("Updated hashmap entry");
     }
 
-    pub fn get_messages(&self, offset: Option<U128>, limit: Option<U128>) -> Vec<Rc<Message>> {
-        let offset = u128::from(offset.unwrap_or(U128(0))) as usize;
-        let limit = u128::from(limit.unwrap_or(U128(0))) as usize;
+    pub fn get_messages(&self, offset: Option<usize>, limit: Option<usize>) -> Vec<Rc<Message>> {
+        let offset = offset.unwrap_or(0);
+        let limit = limit.unwrap_or(10);
         let len = self.all_messages.len() as usize;
         let upperlimit = if len < (offset*limit+limit) {
             0
@@ -96,9 +97,9 @@ impl MessageList {
         self.all_messages.iter().cloned().collect::<Vec<_>>()[upperlimit..].to_vec()
     }
 
-    pub fn get_premium_messages(&self, offset: Option<U128>, limit: Option<U128>) -> Vec<Rc<Message>> {
-        let offset = u128::from(offset.unwrap_or(U128(0))) as usize;
-        let limit = u128::from(limit.unwrap_or(U128(0))) as usize;
+    pub fn get_premium_messages(&self, offset: Option<usize>, limit: Option<usize>) -> Vec<Rc<Message>> {
+        let offset = offset.unwrap_or(0);
+        let limit = limit.unwrap_or(10);
         let len = self.premium_messages.len() as usize;
         let upperlimit = if len < (offset*limit+limit) {
             0

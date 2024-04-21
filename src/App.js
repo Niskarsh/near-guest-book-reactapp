@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import './App.css';
 import "@near-wallet-selector/modal-ui/styles.css"
 import { Wallet } from './components/near-wallet';
+import { utils } from 'near-api-js'
 
 window.Buffer = window.Buffer || require("buffer").Buffer;
 
@@ -56,8 +57,10 @@ class App extends Component {
 
   addMessage = async () => {
     const { wallet, CONTRACT_ADDRESS, step, message } = this.state;
+    console.log('`````````````````````````````')
     this.setState({ increment: 'Pending' })
-    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'add_message', args: { message }, deposit: parseInt(step, 10) });
+    let deposit = utils.format.parseNearAmount(step.toString())
+    await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'add_message', args: { message }, deposit });
     let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
     this.setState({ counter: newValue, increment: 'Add Message' });
   }
@@ -67,8 +70,8 @@ class App extends Component {
   currentValue = async ({ wallet, CONTRACT_ADDRESS }) => wallet.viewMethod({
     contractId: CONTRACT_ADDRESS, method: 'get_messages',
     args: {
-      offset: '0',
-      limit: '10'
+      offset: 0,
+      limit: 10,
     }
   });
 
@@ -95,7 +98,8 @@ class App extends Component {
     
     if (isSignedIn) {
       yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
-      console.log(`!!!!!!!!!!!!!!!`, yourMessages)
+      yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
+      // console.log(`!!!!!!!!!!!!!!!`, sm)
     }
     this.setState({
       wallet, walletSignedIn: Boolean(isSignedIn), counter, yourMessages,
@@ -121,16 +125,14 @@ class App extends Component {
           <input name='message' placeholder='Message' type='textarea' value={message} onChange={this.handleChange} />
           <input name='step' aria-label='change' placeholder='Step value' type='text' value={step} onChange={this.handleChange} />
           <button onClick={this.addMessage} disabled={!walletSignedIn} l> {increment} </button>
-          <button onClick={this.decrease} disabled={!walletSignedIn}> {decrement} </button>
-          <button onClick={this.reset} disabled={!walletSignedIn}> {reset} </button>
         </div>
-        <div class='superContainer'>
-          <div class='container'>
-            <div class='subContainer'>
+        <div className='superContainer'>
+          <div className='container'>
+            <div className='subContainer'>
               <h2 >All messages </h2>
               {
                 counter.map((entry, index) => {
-                  return <div key={`a_${index}`} class="card">
+                  return <div key={`a_${index}`} className="card">
                     <div style={{ margin: "5px" }}>id: {entry.id}</div>
                     <div style={{ margin: "5px" }}>Premium: {entry.premium_attached || 0} N</div>
                     <div style={{ margin: "5px" }}>Message: {entry.message}</div>
@@ -139,11 +141,11 @@ class App extends Component {
               }
             </div>
 
-            <div class='subContainer'>
+            <div className='subContainer'>
               <h2 >Your messages </h2>
               {
                 yourMessages.map((entry, index) => {
-                  return <div key={`b_${index}`} class="card">
+                  return <div key={`b_${index}`} className="card">
                     <div style={{ margin: "5px" }}>id: {entry.id}</div>
                     <div style={{ margin: "5px" }}>Premium: {entry.premium_attached || 0} N</div>
                     <div style={{ margin: "5px" }}>Message: {entry.message}</div>

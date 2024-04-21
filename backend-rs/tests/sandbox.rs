@@ -33,7 +33,7 @@ async fn returns_all_messages() -> Result<(), Box<dyn Error>> {
 
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": "0", "limit": "10" }))
+        .args_json(json!({ "offset": 0, "limit": 10 }))
         .await?
         .json()?;
     let dummy = vec![json!({ "id": "123"})];
@@ -52,7 +52,7 @@ async fn returns_all_messages() -> Result<(), Box<dyn Error>> {
     // Check if messages are lost once retrieved
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": "0", "limit": "10" }))
+        .args_json(json!({ "offset": 0, "limit": 10 }))
         .await?
         .json()?;
     let dummy = vec![json!({ "id": "123"})];
@@ -95,7 +95,7 @@ async fn verify_highest_donation() -> Result<(), Box<dyn Error>> {
 
     let recieved_messages: serde_json::Value = account[0]
         .view(contract.id(), "get_messages")
-        .args_json(json!({ "offset": "0", "limit": "10" }))
+        .args_json(json!({ "offset": 0, "limit": 10 }))
         .await?
         .json()?;
 
@@ -113,7 +113,7 @@ async fn verify_highest_donation() -> Result<(), Box<dyn Error>> {
 
     let premium_messages = contract
         .view("get_premium_messages")
-        .args_json(json!({ "offset": "0", "limit": "10" }))
+        .args_json(json!({ "offset": 0, "limit": 10 }))
         .await?
         // .json()?;
         .json::<Vec<Map<String, Value>>>()?;
@@ -169,6 +169,67 @@ async fn get_account_wise_msg() -> Result<(), Box<dyn Error>> {
         .json::<Vec<Map<String, Value>>>()?;
 
     assert_eq!(recieved_messages[0]["id"], account[2].id().to_string());
+
+    let recieved_messages = account[0]
+        .view(contract.id(), "get_messages")
+        .args_json(json!({}))
+        // .transact()
+        .await?
+        .json::<Vec<Map<String, Value>>>()?;
+
+    assert_eq!(recieved_messages.len(), 3);
+
+    Ok(())
+}
+
+
+
+#[tokio::test]
+async fn cmp_msg() -> Result<(), Box<dyn Error>> {
+    let (account, contract) = prepare_dev_env().await?;
+    let _ = account[0]
+        .call(contract.id(), "add_message")
+        .args_json(json!({ "message": "Hi there "}))
+        .transact()
+        .await?;
+    let recieved_messages = account[2]
+        .view(contract.id(), "get_messages")
+        .args_json(json!({}))
+        // .transact()
+        .await?
+        .json::<Vec<Map<String, Value>>>()?;
+
+    println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
+
+    let _ = account[1]
+        .call(contract.id(), "add_message")
+        .args_json(json!({ "message": "Hi there. I am rich "}))
+        .deposit(NearToken::from_near(20))
+        .transact()
+        .await?;
+    let recieved_messages = account[2]
+    .view(contract.id(), "get_messages")
+    .args_json(json!({}))
+    // .transact()
+    .await?
+    .json::<Vec<Map<String, Value>>>()?;
+
+println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
+    let _ = account[2]
+        .call(contract.id(), "add_message")
+        .args_json(json!({ "message": "Hi there. I am richer "}))
+        .deposit(NearToken::from_near(50))
+        .transact()
+        .await?;
+    let recieved_messages = account[2]
+    .view(contract.id(), "get_messages")
+    .args_json(json!({}))
+    // .transact()
+    .await?
+    .json::<Vec<Map<String, Value>>>()?;
+
+println!("^^^^^^^^^^^^^^^^^^^^{:?}", recieved_messages);
+ 
 
     Ok(())
 }
