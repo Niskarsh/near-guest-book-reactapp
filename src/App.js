@@ -3,18 +3,24 @@ import './App.css';
 import "@near-wallet-selector/modal-ui/styles.css"
 import { Wallet } from './components/near-wallet';
 import { utils } from 'near-api-js'
+// import { get } from 'https';
 
 window.Buffer = window.Buffer || require("buffer").Buffer;
 
 class App extends Component {
   state = {
     counter: [],
-    yourMessages: [{ id: null, premium_attached: null, message: null}],
+    yourMessages: {
+      fetch: false,
+      messages: [],
+      fetchInProgress: false,
+    },
     CONTRACT_ADDRESS: 'guest-book2.niskarsh31.testnet',
+
     NETWORK: 'testnet',
     wallet: {},
     walletSignedIn: false,
-    caller: 'Sign in to access counT',
+    caller: 'Sign in to submit feedback',
     increment: 'Add Message',
     decrement: 'Decrease',
     reset: 'Reset',
@@ -57,14 +63,14 @@ class App extends Component {
 
   addMessage = async () => {
     const { wallet, CONTRACT_ADDRESS, step, message } = this.state;
-    console.log('`````````````````````````````')
+    // console.log('`````````````````````````````')
     this.setState({ increment: 'Pending' })
     let deposit = utils.format.parseNearAmount(step.toString())
     await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'add_message', args: { message }, deposit });
     let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
-    let yourMessages = await this.getYourMessages({ wallet, CONTRACT_ADDRESS });
-    console.log(`$$$$$$$$$$$$$$$$$`, yourMessages)
-    this.setState({ counter: newValue, increment: 'Add Message', yourMessages });
+    // let yourMessages = await this.getYourMessages({ wallet, CONTRACT_ADDRESS });
+    // console.log(`$$$$$$$$$$$$$$$$$`, yourMessages)
+    this.setState({ counter: newValue, increment: 'Add Message' });
   }
 
 
@@ -77,9 +83,34 @@ class App extends Component {
     }
   });
 
+  fetchYourMessages = async () => {
+    const { wallet, CONTRACT_ADDRESS } = this.state;
+    let yourMessages = await this.getYourMessages({ wallet, CONTRACT_ADDRESS });
+
+    // yourMessages.map(ele => console.log(`$$$$$$$$$$$$$$$$$`, ele))
+    
+    this.setState ({
+      yourMessages: {
+        fetch: true,
+        fetchInProgress: false,
+        messages: yourMessages,
+      }
+    });
+  }
+
   getYourMessages = async ({ wallet, CONTRACT_ADDRESS }) => {
+    this.setState(prevState => ({
+      ...prevState,
+      yourMessages: {
+        ...prevState.yourMessages,
+        fetchInProgress: true,
+      }
+    }))
     let yourMessages = [];
+    let newValue = await this.currentValue({ wallet, CONTRACT_ADDRESS });
+    // console.log('`````````````````````````````', newValue)
     yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
+    // console.log('`````````````````````````````')
       yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
     return yourMessages;
     // wallet.viewMethod({
@@ -95,9 +126,21 @@ class App extends Component {
     this.setState({ [event.target.name]: event.target.value });
   };
 
+  getParameters = (URL) => {
+    
+    if (decodeURI(URL.split("?")[1]) !== 'undefined'){
+    URL = JSON.parse('{"' + decodeURI(URL.split("?")[1]).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g, '":"') +'"}');
+    return URL;
+  } else {
+    return undefined;
+  }
+  };
+  
+
   async componentDidMount() {
     let { wallet, CONTRACT_ADDRESS, NETWORK, yourMessages } = this.state;
-    // let yourMessages = [];
+    let yourMessage = [];
+    let fetch = false;
     if (!(Object.keys(wallet).length)) {
       wallet = new Wallet({
         createAccessKeyFor: CONTRACT_ADDRESS,
@@ -111,15 +154,29 @@ class App extends Component {
     let counter = await this.currentValue({ wallet, CONTRACT_ADDRESS });
     // console.log(counter)
     
+    if (yourMessages.fetchInProgress && this.getParameters(window.location.href) && this.getParameters(window.location.href).transactionHashes) {
+      yourMessage = await wallet.getTransactionResult(this.getParameters(window.location.href).transactionHashes);
+      fetch = true;
+      // console.log('@@@@@@@@@@@@@@@@@@', yourMessage)
+    }
     // if (isSignedIn && (yourMessages.length === 1) && (!(yourMessages[0].id))) {
     //   yourMessages = await wallet.callMethod({ contractId: CONTRACT_ADDRESS, method: 'messages_by_signed_in_user'});
     //   // yourMessages = await wallet.getTransactionResult(yourMessages.transaction_outcome.id);
     //   console.log(`!!!!!!!!!!!!!!!`)
     // }
-    this.setState({
+    let stateEntry = {
       wallet, walletSignedIn: Boolean(isSignedIn), counter,
-      caller: isSignedIn ? `Welcome: ${wallet.accountId}` : 'Sign in to access counT'
-    });
+      caller: isSignedIn ? `Welcome: ${wallet.accountId}` : 'Sign in to submit feedback'
+    }
+    if (fetch) {
+      stateEntry.yourMessages = {
+        fetch,
+        fetchInProgress: false,
+        messages: yourMessage
+      }
+    }
+
+    this.setState(stateEntry);
   }
 
   render() {
@@ -127,10 +184,9 @@ class App extends Component {
     return (
       <div >
         <div className="App">
-          <h1>This counter lives in the NEAR blockchain! [TESTNET]</h1>
-          <p>Share with your friends, or just watch the counter go</p>
-          <p>To participate, login</p>
-          <p>Once done, reset the counter. OR leave it for some other time</p>
+          <h1>This Guest book lives in the NEAR blockchain! [TESTNET]</h1>
+          <p>Share reviews of your stay here</p>
+          <p>Do leave a Donation if you liked our service</p>
           <h2>{caller}</h2>
 
           <button onClick={this.walletSignIn} hidden={walletSignedIn} >Connect wallet</button>
@@ -138,8 +194,8 @@ class App extends Component {
           <br />
           <br />
           <input name='message' placeholder='Message' type='textarea' value={message} onChange={this.handleChange} />
-          <input name='step' aria-label='change' placeholder='Step value' type='text' value={step} onChange={this.handleChange} />
-          <button onClick={this.addMessage} disabled={!walletSignedIn} l> {increment} </button>
+          <input name='step' aria-label='change' placeholder='Donation' type='text' onChange={this.handleChange} />
+          <button onClick={this.addMessage} disabled={!walletSignedIn}> {increment} </button>
         </div>
         <div className='superContainer'>
           <div className='container'>
@@ -158,14 +214,16 @@ class App extends Component {
 
             <div className='subContainer'>
               <h2 >Your messages </h2>
-              {
-                yourMessages.map((entry, index) => {
+              { 
+              yourMessages.fetch ?
+                yourMessages.messages.map((entry, index) => {
                   return <div key={`b_${index}`} className="card">
                     <div style={{ margin: "5px" }}>id: {entry.id}</div>
                     <div style={{ margin: "5px" }}>Premium: {entry.premium_attached || 0} N</div>
                     <div style={{ margin: "5px" }}>Message: {entry.message}</div>
                   </div>
-                })
+                }) : 
+                (<button onClick={this.fetchYourMessages} disabled={!walletSignedIn}>Fetch Your Messages</button>)
               }
             </div>
           </div>

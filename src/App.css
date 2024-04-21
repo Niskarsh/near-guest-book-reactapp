@@ -62,7 +62,6 @@
   display: flex;
   justify-content: space-evenly;
   justify-self: center;
-  align-items: center;
   text-align: left;
   width: 70%;
 }
